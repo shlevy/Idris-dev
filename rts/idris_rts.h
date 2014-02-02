@@ -289,8 +289,8 @@ static inline VAL BUFFER_APPEND(VM* vm, VAL buf, VAL len, VAL v) {
         cl = buf;
     }
 
-    cl->info.buf->store[buf->info.buf->fill] = v->info.bits8;
-    cl->info.buf->fill = buf->info.buf->fill + 1;
+    cl->info.buf->store[length] = v->info.bits8;
+    cl->info.buf->fill = length + 1;
     return cl;
 }
 
