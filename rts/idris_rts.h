@@ -249,16 +249,8 @@ VAL idris_strRev(VM* vm, VAL str);
 // Buffer primitives
 // Defined here and hinted inline so multiple peeks or appends
 // can be optimized away without LTO
-static inline VAL MKBUF(VM* vm, size_t size) {
-    Closure* cl = allocate(vm, size, 0);
-    SETTY(cl, BUFFER);
-    cl->info.buf = (Buffer*)((void*)cl + sizeof(Closure));
-    cl->info.buf->cap = size - (sizeof(Closure) + sizeof(Buffer));
-    return cl;
-}
-
-static inline VAL BUFFER_ALLOCATE(VM* vm, VAL hint) {
-    size_t size = ((size_t) hint->info.bits64) + sizeof(Closure) + sizeof(Buffer);
+static inline VAL MKBUF(VM* vm, size_t hint) {
+    size_t size = hint + sizeof(Closure) + sizeof(Buffer);
 
     // Round up to a power of 2
     --size;
@@ -267,7 +259,15 @@ static inline VAL BUFFER_ALLOCATE(VM* vm, VAL hint) {
         size |= size >> (1 << i);
     ++size;
 
-    Closure* cl = MKBUF(vm, size);
+    Closure* cl = allocate(vm, size, 0);
+    SETTY(cl, BUFFER);
+    cl->info.buf = (Buffer*)((void*)cl + sizeof(Closure));
+    cl->info.buf->cap = size - (sizeof(Closure) + sizeof(Buffer));
+    return cl;
+}
+
+static inline VAL BUFFER_ALLOCATE(VM* vm, VAL hint) {
+    Closure* cl = MKBUF(vm, (size_t) hint->info.bits64);
     cl->info.buf->fill = 0;
     return cl;
 }
@@ -283,8 +283,7 @@ static inline VAL BUFFER_APPEND(VM* vm, VAL buf, VAL len, VAL v) {
     Closure* cl;
     if (length != buf->info.buf->fill ||
             length >= buf->info.buf->cap) {
-        size_t size = (buf->info.buf->cap + sizeof buf + sizeof buf->info.buf) * 2;
-        cl = MKBUF(vm, size);
+        cl = MKBUF(vm, length + 1);
         memmove(cl->info.buf->store, buf->info.buf->store, length);
     } else {
         cl = buf;
