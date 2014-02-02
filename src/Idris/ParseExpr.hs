@@ -1014,13 +1014,12 @@ Constant ::=
 @
 -}
 constant :: IdrisParser Idris.Core.TT.Const
-constant =  do reserved "Integer";      return (AType (ATInt ITBig))
-        <|> do reserved "Int";          return (AType (ATInt ITNative))
-        <|> do reserved "Char";         return (AType (ATInt ITChar))
-        <|> do reserved "Float";        return (AType ATFloat)
-        <|> do reserved "String";       return StrType
-        <|> do reserved "Ptr";          return PtrType
-        <|> do reserved "prim__UnsafeBuffer"; return BufferType
+constant =  do reserved "Integer";return (AType (ATInt ITBig))
+        <|> do reserved "Int";    return (AType (ATInt ITNative))
+        <|> do reserved "Char";   return (AType (ATInt ITChar))
+        <|> do reserved "Float";  return (AType ATFloat)
+        <|> do reserved "String"; return StrType
+        <|> do reserved "Ptr";    return PtrType
         <|> do reserved "Bits8";  return (AType (ATInt (ITFixed IT8)))
         <|> do reserved "Bits16"; return (AType (ATInt (ITFixed IT16)))
         <|> do reserved "Bits32"; return (AType (ATInt (ITFixed IT32)))
@@ -1029,6 +1028,7 @@ constant =  do reserved "Integer";      return (AType (ATInt ITBig))
         <|> do reserved "Bits16x8"; return (AType (ATInt (ITVec IT16 8)))
         <|> do reserved "Bits32x4"; return (AType (ATInt (ITVec IT32 4)))
         <|> do reserved "Bits64x2"; return (AType (ATInt (ITVec IT64 2)))
+        <|> do reserved "prim__UnsafeBuffer"; return BufferType
         <|> try (do f <- float;   return $ Fl f)
         <|> try (do i <- natural; return $ BI i)
         <|> try (do s <- verbatimStringLiteral; return $ Str s)

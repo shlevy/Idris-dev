@@ -12,10 +12,10 @@ two : Bits8
 two = 2
 
 firstHalf : Buffer 4
-firstHalf = appendBits32LE em 1 one
+firstHalf = appendBits32LE em one
 
 full : Buffer 8
-full = appendBits8 firstHalf 4 two
+full = appendBits8 ( appendBits8 ( appendBits8 ( appendBits8 firstHalf two ) two ) two ) two
 
 firstByte : Bits8
 firstByte = peekBits8 full 0

@@ -247,28 +247,53 @@ VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
 
 // Buffer primitives
-VAL idris_allocate(VM* vm, VAL hint);
-VAL idris_appendBuffer(VM* vm, VAL fst, VAL fstLen, VAL cnt, VAL sndLen, VAL sndOff, VAL snd);
-VAL idris_appendB8Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB16Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB16LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB16BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB32Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB32LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB32BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB64Native(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB64LE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_appendB64BE(VM* vm, VAL buf, VAL len, VAL cnt, VAL val);
-VAL idris_peekB8Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB16Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB16LE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB16BE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB32Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB32LE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB32BE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB64Native(VM* vm, VAL buf, VAL off);
-VAL idris_peekB64LE(VM* vm, VAL buf, VAL off);
-VAL idris_peekB64BE(VM* vm, VAL buf, VAL off);
+// Defined here and hinted inline so multiple peeks or appends
+// can be optimized away without LTO
+static inline VAL MKBUF(VM* vm, size_t size) {
+    Closure* cl = allocate(vm, size, 0);
+    SETTY(cl, BUFFER);
+    cl->info.buf = (Buffer*)((void*)cl + sizeof(Closure));
+    cl->info.buf->cap = size - (sizeof(Closure) + sizeof(Buffer));
+    return cl;
+}
+
+static inline VAL BUFFER_ALLOCATE(VM* vm, VAL hint) {
+    size_t size = ((size_t) hint->info.bits64) + sizeof(Closure) + sizeof(Buffer);
+
+    // Round up to a power of 2
+    --size;
+    size_t i;
+    for (i = 0; i <= sizeof size; ++i)
+        size |= size >> (1 << i);
+    ++size;
+
+    Closure* cl = MKBUF(vm, size);
+    cl->info.buf->fill = 0;
+    return cl;
+}
+
+static inline VAL BUFFER_PEEK(VM* vm, VAL buf, VAL off) {
+    //assert(((size_t) off->info.bits64) < buf->info.buf->fill);
+    return MKB8(vm, buf->info.buf->store[(size_t) off->info.bits64]);
+}
+
+static inline VAL BUFFER_APPEND(VM* vm, VAL buf, VAL len, VAL v) {
+    size_t length = (size_t) len->info.bits64;
+    //assert(length <= buf->info.buf->fill);
+    Closure* cl;
+    if (length != buf->info.buf->fill ||
+            length >= buf->info.buf->cap) {
+        size_t size = (buf->info.buf->cap + sizeof buf + sizeof buf->info.buf) * 2;
+        cl = MKBUF(vm, size);
+        memmove(cl->info.buf->store, buf->info.buf->store, length);
+    } else {
+        cl = buf;
+    }
+
+    cl->info.buf->store[buf->info.buf->fill] = v->info.bits8;
+    cl->info.buf->fill = buf->info.buf->fill + 1;
+    return cl;
+}
 
 // Command line args
 
